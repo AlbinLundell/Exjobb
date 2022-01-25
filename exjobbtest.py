@@ -2,5 +2,4 @@
 name=input("state your name")
 name= "Hello "+name
 print(name)
-print("this is new")
-print("what?")
+print("update directly from pycharm")
