@@ -43,34 +43,23 @@ print(df_franvaro_matte1)
 # Resultat: 858 elever
 
 # Ibland ligger två slumpkoder inne per elev!
-# Resultat 791 elever
+# Använder distinct för att få fram att, resultat = 793 elever unika elever
 df_franvaro_matte1_wo_duplicate = pd.read_sql('SELECT DISTINCT slumpkod from franvaro where kurs = "MATMAT01c" ', con = db_connection) # Alla unika elevers slumpid som finns i frånvaro
 print(df_franvaro_matte1_wo_duplicate)
 
-# Måste därefter sortera table så man bara får med första gången eleven är inne
-# SELECT ID, FirstName, LastName FROM table GROUP BY(FirstName)
-# WHERE kurs = "MATMAT01c"
-
+# Sortera table efter första slumpkoden som registreras på eleven
+# Välj alla kolumner, från frånvaro, men enbatr Matte 1c. Group by och order by ger att vi sorterar
+# dem i siffer-bokstavsordning enligt slumpkod samt väljer bara ut ett distinct värde.
 sql_query = 'SELECT * ' \
             'FROM franvaro ' \
             'WHERE kurs = "MATMAT01c" ' \
-            'GROUP BY(slumpkod) '
-
+            'GROUP BY(slumpkod) ' \
+            'ORDER BY Läsår '
 df_franvaro_matte1_sorterad = pd.read_sql(sql_query, con = db_connection)
-print("--------------------------------------------")
+print("--------------------- Matte1, en slumpkod med frånvaro och närvaro  -----------------------")
 print(df_franvaro_matte1_sorterad)
 
-"""
-SELECT DISTINCT MIN(o.tblFruit_ID)  AS tblFruit_ID,
-   o.tblFruit_FruitType,
-   MAX(o.tblFruit_FruitName)
-FROM   tblFruit  AS o
-GROUP BY
-     tblFruit_FruitType
-"""
 # Resultat med utan
-
-
 # Försök till att joina två tables. Men något blir fel för kemi!!!
 '''
 # SELECT betyg.slumpkod, franvaro.slumpkod,
@@ -110,11 +99,12 @@ print(df_kolla_elever)
 '''
 
 # Använder pandas merge på slumpkod!
-# Dock ligger vissa slumpkoder inne två gånger
-# Tanke - Måste ordna med hänsyn på läsår!
-# När jag gör query ordna på läsår
-
-df_combined = df_betyg_matte1.merge(df_franvaro_matte1, how = 'inner', on = 'slumpkod')
-print(df_combined)
+# tidigare df_franvaro_matte1_sorterad är städad.
+# Vi får ut 646 elever, men det var 649 elever som hade ett betyg i matte 1. Tre elever finns
+# således ej i frånvaro table
+print('--------------------------------- Merged ------------------------')
+df_combined = df_betyg_matte1.merge(df_franvaro_matte1_sorterad, how = 'inner', on = 'slumpkod')
+df_combined_2 = df_combined.drop(columns=['id_x', 'id_y', 'kurs_y', 'Läsår'])
+print(df_combined_2)
 # df1.merge(df2, how='inner', on='a')
-# df.join(other.set_index('key'), on='key')
+
