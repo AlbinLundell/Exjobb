@@ -107,6 +107,12 @@ y = df_DT["Target"]                     # Represented against target data
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=10)
 
 dt = DecisionTreeClassifier(criterion = 'gini', min_samples_split = 2, random_state=10, max_depth=5)
+# criterion can be etiher gini or entropy
+# max_depth, maximum lvl at which the algoritm is stops running
+# The minimum number of samples required to split an internal node, deafault = 2. Has to be geq 2.
+# random_state controls the randomness of the estimator.
+
+
 dt.fit(X_train, y_train)
 
 print(dt.predict(X_test))
@@ -115,6 +121,8 @@ print(dt.score(X_test, y_test))
 import matplotlib.pyplot as plt
 from sklearn import tree
 
+
+# ------------------------------ Plot the DT -----------------------------------------------------
 fig, axes = plt.subplots(nrows = 1,ncols = 1,figsize = (4,4), dpi=300)
 
 tree.plot_tree(dt,feature_names = features, class_names=targets,filled = True)
