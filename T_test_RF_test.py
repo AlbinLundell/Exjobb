@@ -71,12 +71,17 @@ plt.xlabel("Length (units)")
 plt.show()
 """
 
+# -------------------- pairplot --------------------------
+import seaborn as sns
+sns.pairplot(df_EF_r, hue = "betyg")
+plt.show()
+
+
+
 # ---------------------------- RF --------------------------------
 
-df_F = df_EF_r.loc[df_EF_r["betyg"] == "F"]
-print(df_F.loc[df_F["Matematik"] >= 30])
 
-
+"""
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
@@ -110,6 +115,7 @@ print(X_train.shape, X_test.shape)
 classifier_rf = RandomForestClassifier(random_state=42, n_jobs=-1, max_depth=5, n_estimators=100, oob_score=True)
 # train the tree
 classifier_rf.fit(X_train, y_train)
+print(classifier_rf.oob_score_)
 
 
 # -------------- Hyper parameter tuning ------------------------------------
@@ -133,10 +139,10 @@ print(rf_best)
 
 # ----------------- Plot ----------------------
 from sklearn.tree import plot_tree
-plt.figure(figsize=(20,5))
+plt.figure(figsize=(12,6))
 plot_tree(rf_best.estimators_[5], feature_names = X.columns, class_names=['F','E'], filled=True)
 plt.show()
-
+"""
 
 
 
