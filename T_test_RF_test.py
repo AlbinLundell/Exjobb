@@ -71,19 +71,13 @@ plt.xlabel("Length (units)")
 plt.show()
 """
 
-# -------------------- pairplot --------------------------
-import seaborn as sns
-sns.pairplot(df_EF_r, hue = "betyg")
-plt.show()
-
-
 
 # ---------------------------- RF --------------------------------
 
-
-"""
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
+from sklearn import metrics
+
 from sklearn.model_selection import GridSearchCV
 
 
@@ -101,8 +95,12 @@ print(df_EF_2)
 X = df_EF_2.drop(columns = ["betyg", "Target"])
 print(X)                            # Features
 print(y)                            # Target
+
+# ----------------------- Data info -------------------------------------
 # 23 st som har F
 # 120 som har E
+# 114 i train data
+# 29 st i test data
 
 
 # ----------------- train - test - split ---------------------
@@ -115,11 +113,35 @@ print(X_train.shape, X_test.shape)
 classifier_rf = RandomForestClassifier(random_state=42, n_jobs=-1, max_depth=5, n_estimators=100, oob_score=True)
 # train the tree
 classifier_rf.fit(X_train, y_train)
-print(classifier_rf.oob_score_)
+
+# OOB score
+print(f'OOB score: {classifier_rf.oob_score_}')
+# Accuracy from test set.
+y_pred = classifier_rf.predict(X_test)
+print(f'Accuracy: {metrics.accuracy_score(y_test, y_pred)}')
+
+# skriv om till en dataframe för
+df_test_pred = y_test.to_frame(name='test_value')
+df_test_pred["pred"] = y_pred
+print(df_test_pred)
+
+# ------------------------------ What order of importance do we variable have ---------------------
+# https://www.datacamp.com/community/tutorials/random-forests-classifier-python
+feature_imp = pd.Series(classifier_rf.feature_importances_, index=["Frånvarotid", "Matematik"])
+print(feature_imp)
+
+# ----------------------------------- Confustion matrix ------------------------------------
+
+from sklearn.metrics import plot_confusion_matrix
+
+plot_confusion_matrix(classifier_rf, X_test, y_test, display_labels = ["F", "E"])
+
+plt.show()
+
 
 
 # -------------- Hyper parameter tuning ------------------------------------
-
+"""
 rf = RandomForestClassifier(random_state=42, n_jobs=-1)
 params = {
     'max_depth': [2,3,5,10,20],
@@ -143,6 +165,3 @@ plt.figure(figsize=(12,6))
 plot_tree(rf_best.estimators_[5], feature_names = X.columns, class_names=['F','E'], filled=True)
 plt.show()
 """
-
-
-
