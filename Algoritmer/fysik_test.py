@@ -168,8 +168,35 @@ feature_imp = pd.Series(classifier_rf.feature_importances_, index=["Frånvarotid
                                                                    "page_view_factor", "participation_factor"])
 print(feature_imp)
 
-# --------------------------------------- Hypertuning ------------------------------
+# ---------------------- Apply SMOTE -------------------------------------------------------
+from imblearn.over_sampling import SMOTE
+sm = SMOTE(random_state=42)
+# X_res, y_res = sm.fit_resample(X_train, y_train)
+X_res, y_res = sm.fit_resample(X, y)                    # Jag tänker det är mer korrekt att man även vill skapa mer data att testa på???
 
+X_train_2, X_test_2, y_train_2, y_test_2 = train_test_split(X_res, y_res, train_size=0.8, random_state=42)
+# print train and test sizes.
+print(X_train_2.shape, X_test_2.shape)
+
+# ----------------------------- RF algortihm -----------------------------
+# create classfier algorthm
+classifier_rf_2 = RandomForestClassifier(random_state=42, n_jobs=-1, max_depth=5, n_estimators=100, oob_score=True)
+# train the tree
+classifier_rf_2.fit(X_train_2, y_train_2)
+
+# OOB score
+print(f'OOB score after is: {classifier_rf_2.oob_score_}')
+# Accuracy from test set.
+y_pred_2 = classifier_rf_2.predict(X_test_2)
+print(f'Accuracy after is: {metrics.accuracy_score(y_test_2, y_pred_2)}')
+
+# skriv om till en dataframe för
+df_test_pred_2 = y_test_2.to_frame(name='test_value')
+df_test_pred_2["pred"] = y_pred_2
+print(df_test_pred_2)
+
+# --------------------------------------- Hypertuning ------------------------------
+"""
 rf = RandomForestClassifier(random_state=42, n_jobs=-1)
 params = {
     'max_depth': [2,3,5,10,20],
@@ -185,11 +212,55 @@ grid_search.fit(X_train, y_train)
 print(grid_search.best_score_)
 rf_best = grid_search.best_estimator_
 print(rf_best)
+"""
+
+from sklearn.ensemble import RandomForestRegressor
+
+# ---------------- Hyper parametering ---------------------
+
+"""
+# ----------- do the same algortihm again -------------------------
+rforest_classifier = RandomForestClassifier(random_state=10)
+rforest_classifier.fit(X_train, y_train)
+# Accuracy
+# y_pred = classifier_rf.predict(X_test)
+# print(f'Accuracy: {metrics.accuracy_score(y_test, y_pred)}')
+#n_samples = X_boston.shape[0]
+#n_features = X_boston.shape[1]
+n_samples = 200
+n_features = 5
+
+params = {'n_estimators': [10, 20, 50],
+          'max_depth': [None, 2, 4, 5],
+          'min_samples_split': [2, 0.5, n_samples//2, 2, 5],
+          'min_samples_leaf': [1, 0.5, n_samples//2, 2, 5],
+          'max_features': [None, 'sqrt', 'auto', 'log2', 0.3, 0.5, n_features//2]
+          # 'bootstrap':[True, False]                 # Denna är väl inte av intresse, hela tanken med algortim är att vi önskar bootstrap?
+         }
+
+rf_classifier_grid = GridSearchCV(RandomForestClassifier(random_state=1), param_grid=params, n_jobs=-1, cv=3, verbose=1)
+rf_classifier_grid.fit(X_train,y_train)
+
+print('Best Parameters : ',rf_classifier_grid.best_params_)
+
+cross_val_results = pd.DataFrame(rf_classifier_grid.cv_results_)
+
+print('Train Accuracy : %.3f'%rf_classifier_grid.best_estimator_.score(X_train, y_train))
+print('Test Accurqacy : %.3f'%rf_classifier_grid.best_estimator_.score(X_test, y_test))
+print('Best Accuracy Through Grid Search : %.3f'%rf_classifier_grid.best_score_)
+print('Number of Various Combinations of Parameters Tried : %d', len(cross_val_results))
+
+cross_val_results_sorted = cross_val_results.sort_values(by = 'rank_test_score')
+
+print(cross_val_results_sorted.head()) ## Printing first few results.
+
+"""
 
 # ----------------------------------- Confustion matrix ------------------------------------
-
+"""
 from sklearn.metrics import plot_confusion_matrix
 
 plot_confusion_matrix(classifier_rf, X_test, y_test, display_labels = ["F", "E"])
 
 plt.show()
+"""
