@@ -123,7 +123,7 @@ def random_forrest(X_train, X_test, y_train, y_test):
 
     print(f'Train datapunkter: {y_train.shape} varav (F = {n_F_train}, E = {n_E_train}) \n'
           f'Test datapunkter: {y_test.shape} varav (F = {n_F_test}, E = {n_E_test})')          # Print the shape of the data set
-    classifier_rf = RandomForestClassifier(random_state=42, n_jobs=-1, max_depth=5, n_estimators=100, oob_score=True)   # create classfier algorthm
+    classifier_rf = RandomForestClassifier(random_state=42, n_jobs=-1, max_depth=None, n_estimators=100, oob_score=True)   # create classfier algorthm
     classifier_rf.fit(X_train, y_train)         # train the RF algortihm
 
     print(f'OOB score: {classifier_rf.oob_score_}')                     # OOB score
@@ -146,7 +146,7 @@ def random_forrest_SMOTE(X_train, X_test, y_train, y_test):
     X_res, y_res = bsmote.fit_resample(X_train, y_train)
 
     print(X_res.shape, X_test.shape)          # Print the shape of the data set
-    classifier_rf = RandomForestClassifier(random_state=42, n_jobs=-1, max_depth=5, n_estimators=100, oob_score=True)   # create classfier algorthm
+    classifier_rf = RandomForestClassifier(random_state=42, n_jobs=-1, max_depth=None, n_estimators=100, oob_score=True)   # create classfier algorthm
     classifier_rf.fit(X_res, y_res)         # train the RF algortihm
 
     print(f'OOB score: {classifier_rf.oob_score_}')                     # OOB score
@@ -199,7 +199,7 @@ def hypertune_param(X_train, X_test, y_train, y_test):
     n_samples = len(X_train.index)             # Måste ange dessa för hand, kalla på side i dataframe
     n_features = 12
     params = {'n_estimators': [10, 20, 50],
-              'max_depth': [None, 2, 4, 5],
+              'max_depth': [None, 2, 4, 5, 10],
               'min_samples_split': [2, 3, 4, 5, 10, 20],
               'min_samples_leaf': [1, 2, 5],
               'max_features': [None, 'sqrt', 'auto', 'log2', 0.3, 0.5, n_features//2]
@@ -271,8 +271,8 @@ db_con = connection_to_db() # Create connection to database, Använd denna i all
 """ ------------------- Canvas data! ---------------------------------------------------------------------- """
 """ Byt variabler HÄR, DATUM och KURS """
 df_canvas_1 = pd.read_sql_query('SELECT * FROM canvas '
-                              'WHERE kurs LIKE "FYSFYS01%%" '
-                              'AND datum LIKE "%%06-15" ', con = db_con)
+                              'WHERE kurs LIKE "FYSFYS01a%%" '
+                              'AND datum LIKE "%%02-15" ', con = db_con)
 df_canvas_2 = pageviews_participation_factor(df_canvas_1)                         # Update Canvas table, add two columns
 df_canvas=tardiness_factor(df_canvas_2)
 """ --------------------------- Read other tables -------------------------------------------------
@@ -328,6 +328,9 @@ feature_imp = pd.Series(rf_classifier_A.feature_importances_, index=['Frånvarot
                         'Svenska rättstavning', 'Svenska bokstavskedjor Stanine',
                          'Svenska ordkedjor Stanine','Svenska meningskedjor Stanine'])
 print(feature_imp)
+
+confusion_matrix(rf_classifier_A, X_test, y_test, targets)
+#confusion_matrix(rf_classifier_2, X_test_2, y_test_2, targets_2)
 # ------------------------------ Apply SMOTE  and RF again -------------------------------------------------------------
 # Depending on size we choose for train data, we have to change k_neighbors parameter.
 # Det finns olika SMOTE algortimer, man skulle även här kunna genomföra hypertuning av parameters och på så sätt finna, vilken som är bäst!
@@ -340,6 +343,10 @@ feature_imp = pd.Series(rf_classifier_B.feature_importances_, index=['Frånvarot
                         'Svenska rättstavning', 'Svenska bokstavskedjor Stanine',
                          'Svenska ordkedjor Stanine','Svenska meningskedjor Stanine'])
 print(feature_imp)
+
+
+confusion_matrix(rf_classifier_B, X_test, y_test, targets)
+#confusion_matrix(rf_classifier_2, X_test_2, y_test_2, targets_2)
 # -------------------------------------- Hypertuning parameters --------------------------------
 # Behöver bara köra denna en gång. Därefter, vet vi ju parametrar
 # Intressant att jämföra med olika kurser och mellan olika dataset.
@@ -362,11 +369,29 @@ feature_imp = pd.Series(rf_classifier_1.feature_importances_, index=['Frånvarot
                         'Svenska rättstavning', 'Svenska bokstavskedjor Stanine',
                          'Svenska ordkedjor Stanine','Svenska meningskedjor Stanine'])
 print(feature_imp)
-
+print(df_improved)
 # Some testing
 # higher_grades_test(df_merged, rf_classifier_1)
+df_F = df_improved.loc[df_improved["betyg"] == 'F']
+
+df_P = df_improved.loc[df_improved["betyg"] == 'P']
+variables = ['Frånvarotid','participation_factor','page_view_factor','on_time_factor','late_factor','missing_factor']
+for variable in variables:
+    fig, ax = plt.subplots(1, 1)
+    ax.hist(df_P[variable], bins = 50)
+
+    plt.hist(df_F[variable], bins=50)
 
 
+
+# Set title
+    ax.set_title("Blue = P Orange = F ")
+
+# adding labels
+    ax.set_xlabel(variable)
+    ax.set_ylabel('frequency')
+
+    plt.show()
 
 
 
