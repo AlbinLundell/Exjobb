@@ -147,7 +147,8 @@ def random_forrest(X_train, X_test, y_train, y_test):
     n_F_test = y_test.value_counts()[0]
     n_E_test = y_test.value_counts()[1]
     print(f'Train datapunkter: {int(n_F_train) + int(n_E_train)} varav (F = {n_F_train}, E = {n_E_train}) \n'
-          f'Test datapunkter: {int(n_F_test) + int(n_E_test)} varav (F = {n_F_test}, E = {n_E_test})')         # Print the shape of the data set
+          f'Test datapunkter: {int(n_F_test) + int(n_E_test)} varav (F = {n_F_test}, E = {n_E_test}) \n '
+          f'Total antal datapunkter: {int(n_F_test) + int(n_E_test) + int(n_F_train) + int(n_E_train)}')         # Print the shape of the data set
 
     classifier_rf = RandomForestClassifier(random_state=42, n_jobs=-1, max_depth=5, max_features=None, n_estimators=100, oob_score=True)   # create classfier algorthm
     classifier_rf.fit(X_train, y_train)         # train the RF algortihm
@@ -176,7 +177,8 @@ def random_forrest_SMOTE(X_train, X_test, y_train, y_test):
     n_F_test = y_test.value_counts()[0]
     n_E_test = y_test.value_counts()[1]
     print(f'Train datapunkter: {int(n_F_train) + int(n_E_train)} varav (F = {n_F_train}, E = {n_E_train}) \n'
-          f'Test datapunkter: {int(n_F_test) + int(n_E_test)} varav (F = {n_F_test}, E = {n_E_test})')
+          f'Test datapunkter: {int(n_F_test) + int(n_E_test)} varav (F = {n_F_test}, E = {n_E_test}) \n '
+          f'Total antal datapunkter: {int(n_F_test) + int(n_E_test) + int(n_F_train) + int(n_E_train)}')
 
     print(X_res.shape, X_test.shape)          # Print the shape of the data set
     classifier_rf = RandomForestClassifier(random_state=42, n_jobs=-1, max_depth=5, n_estimators=100, oob_score=True)   # create classfier algorthm
@@ -209,7 +211,8 @@ def random_forrest_SMOTE_HYPER(X_train, X_test, y_train, y_test):
     n_F_test = y_test.value_counts()[0]
     n_E_test = y_test.value_counts()[1]
     print(f'Train datapunkter: {int(n_F_train) + int(n_E_train)} varav (F = {n_F_train}, E = {n_E_train}) \n'
-          f'Test datapunkter: {int(n_F_test) + int(n_E_test)} varav (F = {n_F_test}, E = {n_E_test})')          # Print the shape of the data set
+          f'Test datapunkter: {int(n_F_test) + int(n_E_test)} varav (F = {n_F_test}, E = {n_E_test}) \n '
+          f'Total antal datapunkter: {int(n_F_test) + int(n_E_test) + int(n_F_train) + int(n_E_train)}')          # Print the shape of the data set
 
     # create classfier algorthm, NOW with hypertuned parameters.
     # NOTE hypertuning parameters might differ for E-F and P-F and what class is given.
