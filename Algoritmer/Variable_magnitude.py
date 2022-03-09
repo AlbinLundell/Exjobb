@@ -79,9 +79,14 @@ def tardiness_factor(dataframe_5,type):
 #Skapar en ny dataframe där
 def quantity_maker(df):
     columns = list(df)
-
-    columns.remove('id')
-    columns.remove('slumpkod')
+    if 'id' in columns:
+        columns.remove('id')
+    else:
+        JA='haloj'
+    if 'slumpkod' in columns:
+        columns.remove('slumpkod')
+    else:
+        JA='halojsan'
     #print(columns)
     quantity=[]
     for col_name in columns:
@@ -120,14 +125,18 @@ sql_query = 'SELECT betyg.slumpkod, betyg.betyg, franvaro.Frånvarotid' \
            'WHERE betyg.kurs = "FYSFYS01a" ' \
            'GROUP BY(betyg.slumpkod)'"""
 
-df_betyg= pd.read_sql_query('SELECT slumpkod, betyg FROM betyg WHERE kurs="FYSFYS01a"', con = db_con)
+df_betyg = pd.read_sql_query('SELECT * FROM betyg '
+                                 'WHERE kurs = "FYSFYS01a" '
+                                 'GROUP BY (betyg.slumpkod) ', con = db_con)
 df_franvaro=pd.read_sql_query('SELECT Frånvarotid, slumpkod FROM franvaro WHERE kurs="FYSFYS01a"', con = db_con)
 df_betyg_franvaro= df_betyg.merge(df_franvaro, how = 'inner', on = 'slumpkod')
+df_betyg_franvaro=df_betyg_franvaro.drop_duplicates()
 
-df_diagnoser= pd.read_sql_query('SELECT * FROM diagnoser WHERE NOT `Engelska totalt` = "NULL"', con = db_con)
-df_betyg_franvaro_diagnoser =df_betyg_franvaro.merge(df_diagnoser, how = 'inner', on = 'slumpkod')
-
-
+df_diagnoser= pd.read_sql_query('SELECT * FROM diagnoser', con = db_con)
+df_diagnoser=df_diagnoser.drop_duplicates()
+df_betyg_diagnoser =df_betyg.merge(df_diagnoser, how = 'inner', on = 'slumpkod')
+df_betyg_franvaro_diagnoser=df_betyg_franvaro.merge(df_diagnoser,how='inner',on='slumpkod')
+df_betyg_franvaro_diagnoser=df_betyg_franvaro_diagnoser.drop_duplicates()
 """ --------------------------------- merge tables ----------------------------------------------------------- """
 # List of variables, not to drop!
 variables_tokeep_list = ['betyg', 'Frånvarotid', 'Matematik', 'page_view_factor', 'participation_factor',
@@ -137,12 +146,43 @@ variables_tokeep_list = ['betyg', 'Frånvarotid', 'Matematik', 'page_view_factor
 df_merged = merge_function(df_betyg_franvaro_diagnoser, df_canvas, variables_tokeep_list)         # merge and keep variables above.
 #print(df_merged)
 
-diagnos_quant=quantity_maker(df_betyg_franvaro_diagnoser)
-canvas_quant=quantity_maker(df_canvas)
+df_canvas_dropped= df_canvas.drop(columns=['participations','participations_level','page_views','page_views_level','kurs','start',
+                                           'slut', 'status', 'max_page_views','max_participations', 'tardiness_breakdown_missing',
+                                           'tardiness_breakdown_late','tardiness_breakdown_on_time', 'tardiness_breakdown_floating'
+                                           ,'tardiness_breakdown_total', 'datum_DateTime', 'Average_page_views', 'Average_participation',
+                                                'Average_saknade_inlämningar', 'Average_on_time_inlämningar', 'Average_late_inlämningar',])
+df_franv_dropped= df_betyg_franvaro.drop(columns=['kurs','betyg'])
 
+df_diagnoser_dropped= df_betyg_diagnoser.drop(columns=['id_x', 'kurs','betyg','id_y'])
+diagnos_quant=quantity_maker(df_diagnoser_dropped)
+franv_quant=quantity_maker(df_franv_dropped)
+canvas_quant=quantity_maker(df_canvas_dropped)
+
+merged_quant=quantity_maker(df_merged)
+betyg_quant=quantity_maker(df_betyg)
+
+print(betyg_quant)
 print(diagnos_quant)
 print(canvas_quant)
+print(franv_quant)
+print('När alla grejer är merged')
+print(merged_quant)
+big_quant=betyg_quant.append(franv_quant)
+big_quant = big_quant.append(diagnos_quant)
+big_quant = big_quant.append(canvas_quant)
+# create plot
 
+
+sn.barplot(x ='quantity' , y = 'col_name', data = big_quant,
+            palette = 'hls',
+            capsize = 0.05,
+            saturation = 8,
+            errcolor = 'gray', errwidth = 2,
+            ci = 'sd'
+            ).set(title='Variables for Physics 1a')
+
+
+plt.show()
 
 #print(Matematik_na)
 #print(len(Matematik_na))
