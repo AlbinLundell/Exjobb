@@ -116,12 +116,28 @@ def remove_grades(df, grades_list):
 # Function rewrite target column to integer classifier
 def encode_target(df, target_column):
     df_mod_sorted = df.copy()          # create a copy df
-    # df_mod_sorted = df_mod.sort_values(by = 'betyg', ascending = False)     # Sort the dateframe, we want F before E (And P before E)
-    targets = df_mod_sorted[target_column].unique()    # define targets
+    # df_mod_sorted = df_mod.sort_values(by = 'betyg', ascending = False)     # Sort the dateframe, we want F before E
+    # Om denna är F så måste vi byta två rader
+
+    # Om första raden har har ett P betyg så måste vi byta till F längst fram!
+    betyg = df_mod_sorted.iloc[0]["betyg"]
+    if betyg == "P":
+        index_list = df_mod_sorted.index.tolist()       # Skriv om alla index till en list
+        ind_list_2 = df_mod_sorted.index[df_mod_sorted["betyg"] == "F"].tolist()        # Plocka ut första elementet med F
+        ind_2 = ind_list_2[0]
+        # Droppa index för första F betyg
+        index_list.remove(ind_2)
+        index_list.insert(0, ind_2)
+        df_mod_sorted_2 = df_mod_sorted.reindex(index_list)
+    else:
+        df_mod_sorted_2 = df_mod_sorted
+
+
+    targets = df_mod_sorted_2[target_column].unique()    # define targets
     map_to_int = {name: n for n, name in enumerate(targets)}
-    df_mod_sorted["Target"] = df_mod_sorted[target_column].replace(map_to_int)     # Create target column
-    y = df_mod_sorted["Target"]                                             # Create features and label series and df
-    X = df_mod_sorted.drop(columns = ["betyg", "Target"])
+    df_mod_sorted_2["Target"] = df_mod_sorted_2[target_column].replace(map_to_int)     # Create target column
+    y = df_mod_sorted_2["Target"]                                             # Create features and label series and df
+    X = df_mod_sorted_2.drop(columns = ["betyg", "Target"])
     return (X, y, targets)
 
 def remove_percentage(df):
@@ -167,7 +183,9 @@ def random_forrest(X_train, X_test, y_train, y_test):
 
 def random_forrest_SMOTE(X_train, X_test, y_train, y_test):
     print("------------------------RF with SMOTE --------------------------")
-    bsmote = BorderlineSMOTE(random_state = 42, kind = 'borderline-2', k_neighbors = 3)
+    # Om felkod, testa att byta k_neighbors, m_neighbours
+    # Kolla different smote parametrar
+    bsmote = BorderlineSMOTE(random_state = 42, kind = 'borderline-2', k_neighbors = 2, m_neighbors = 7)
     #X_res_sm, y_res_sm = sm.fit_resample(X_train, y_train)    # Apply it on the train data
     #X_res_1, y_res_1 = bsmote1.fit_resample(X_train, y_train)
     X_res, y_res = bsmote.fit_resample(X_train, y_train)
@@ -201,7 +219,7 @@ def random_forrest_SMOTE(X_train, X_test, y_train, y_test):
 def random_forrest_SMOTE_HYPER(X_train, X_test, y_train, y_test):
     print("------------------------RF with SMOTE and HYPER--------------------------")
 
-    bsmote = BorderlineSMOTE(random_state = 42, kind = 'borderline-2', k_neighbors = 3)
+    bsmote = BorderlineSMOTE(random_state = 42, kind = 'borderline-2', k_neighbors = 2, m_neighbors = 7)
     #X_res_sm, y_res_sm = sm.fit_resample(X_train, y_train)    # Apply it on the train data
     #X_res_1, y_res_1 = bsmote1.fit_resample(X_train, y_train)
     X_res, y_res = bsmote.fit_resample(X_train, y_train)
@@ -216,10 +234,11 @@ def random_forrest_SMOTE_HYPER(X_train, X_test, y_train, y_test):
 
     # create classfier algorthm, NOW with hypertuned parameters.
     # NOTE hypertuning parameters might differ for E-F and P-F and what class is given.
-    # Best Parameters :  {'max_depth': None, 'max_features': 0.3, 'min_samples_leaf': 1, 'min_samples_split': 4, 'n_estimators': 10}
+
+    # Best Parameters : {'max_depth': None, 'max_features': 'sqrt', 'min_samples_leaf': 1, 'min_samples_split': 2, 'n_estimators': 10}
     # Ska vi lägga in Max depth och max_features ändå???
-    classifier_rf = RandomForestClassifier(random_state = 42, n_jobs=-1, max_depth = None, max_features = 0.3, min_samples_leaf = 1,
-                                           min_samples_split = 4, n_estimators = 10, oob_score=True)
+    classifier_rf = RandomForestClassifier(random_state = 42, n_jobs=-1, max_depth = None, max_features = 'sqrt', min_samples_leaf = 1,
+                                           min_samples_split = 2, n_estimators = 10, oob_score=True)
     classifier_rf.fit(X_res, y_res)         # train the RF algortihm
 
     print(f'OOB score: {classifier_rf.oob_score_}')                     # OOB score
@@ -333,25 +352,31 @@ pd.set_option('display.max_columns', None)
 db_con = connection_to_db() # Create connection to database, Använd denna i alla SQL_queries!
 
 # ------------------- Canvas data! ----------------------------------------------------------------------
-df_canvas_1 = read_sql_betyg("FYSFYS01a" ,'02-15' ,db_con)        # read canvas table from SQL
+df_canvas_1 = read_sql_betyg("TEKTEK01" ,'02-15' ,db_con)        # read canvas table from SQL
 #Byt variabler HÄR, DATUM och KURS
 df_canvas = pageviews_participation_factor(df_canvas_1)                         # Update Canvas table, add factorised columns
 
 # --------------------------- Read other tables -------------------------------------------------
 # Lägg till vilka variabler du vill select här!
-df_betyg_franvaro_diagnoser = read_sql("FYSFYS01a", db_con)
+df_betyg_franvaro_diagnoser = read_sql("TEKTEK01", db_con)
 
 # --------------------------------- merge tables ----------------------------------------------------------- 
 # List of variables, not to drop!
 # Add variables to keep here:
-variables_tokeep_list = ['betyg', 'Frånvarotid', 'Matematik',
+# Måste ändra MED CANVAS DATA
+# MED CANVAS: 'betyg', 'Frånvarotid', 'Matematik', 'page', 'page_view_factor, 'participation_factor', 'on_time_factor''
+# 'Svenska ordkedjor Stanine', 'Svenska bokstavskedjor Stanine', 'Svenska meningskedjor Stanine','Engelska totalt'
+# Utan CANVAS: 'betyg', 'Frånvarotid', 'Matematik',
+# 'Svenska ordkedjor Stanine', 'Svenska bokstavskedjor Stanine', 'Svenska meningskedjor Stanine','Engelska totalt'
+
+variables_tokeep_list = ['betyg', 'Frånvarotid', 'Matematik', 'page_view_factor', 'participation_factor', 'on_time_factor',
                          'Svenska ordkedjor Stanine', 'Svenska bokstavskedjor Stanine', 'Svenska meningskedjor Stanine','Engelska totalt']
 
 # Måste skapa en variables to keep function och en merge funktion
 # Bara om vi ska ha med Canvasdata
-# df_merged = merge_function(df_betyg_franvaro_diagnoser, df_canvas, variables_tokeep_list)         # merge and keep variables above.
+df_merged = merge_function(df_betyg_franvaro_diagnoser, df_canvas, variables_tokeep_list)         # merge and keep variables above.
 # Om vi INTE har canvas data
-df_merged = remove_variables(df_betyg_franvaro_diagnoser, variables_tokeep_list)
+# df_merged = remove_variables(df_betyg_franvaro_diagnoser, variables_tokeep_list)
 
 # ----------------------------- Clean and Transform data -----------------------------------------------------
 df_cleaned = remove_percentage(df_merged)       # Clean % for engelska total )
@@ -366,7 +391,8 @@ X, y, targets = encode_target(df_improved, "betyg")               # E-F: Create 
 # X_2, y_2, targets_2 = encode_target(df_improved_2, "betyg")       # P-F: Create X, y dfs, and target string list.
 
 # ------------------ Train - Test split data --------------------------------------------------------------
-X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.8, random_state=42)         # Train and test data
+# randomstate i ordning: 42, 1, 2
+X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.8, random_state=2)         # Train and test data
 # X_train_2, X_test_2, y_train_2, y_test_2 = train_test_split(X_2, y_2, train_size=0.8, random_state=42)
 
 # ----------------------------------- RF algorithm --------------------------------------------------------
@@ -382,9 +408,12 @@ features(just_rf_classifier, list(X_train), X_test, y_test)                     
 
 # we remove the worst values and therefore the features has to eb dropped
 # Do this by hand!
-X_train_dropped = X_train.drop(columns = ['Svenska ordkedjor Stanine', 'Svenska bokstavskedjor Stanine'])
-X_test_dropped = X_test.drop(columns = ['Svenska ordkedjor Stanine', 'Svenska bokstavskedjor Stanine'])
-remove_targets = np.array(['Svenska ordkedjor Stanine', 'Svenska bokstavskedjor Stanine'])
+X_train_dropped = X_train.drop(columns = ['Svenska ordkedjor Stanine', 'Svenska meningskedjor Stanine', 'Engelska totalt',
+                                          'page_view_factor', 'on_time_factor'])
+X_test_dropped = X_test.drop(columns = ['Svenska ordkedjor Stanine', 'Svenska meningskedjor Stanine', 'Engelska totalt',
+                                          'page_view_factor', 'on_time_factor'])
+remove_targets = np.array(['Svenska ordkedjor Stanine', 'Svenska meningskedjor Stanine', 'Engelska totalt',
+                                          'page_view_factor', 'on_time_factor'])
 new_targets = np.setdiff1d(targets, remove_targets)
 
 # --------------- RF again, not with less variables -----------------------
