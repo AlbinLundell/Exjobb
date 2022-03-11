@@ -75,7 +75,7 @@ def read_sql(kurs, con):
                 'FROM betyg ' \
                 'INNER JOIN franvaro ON franvaro.slumpkod = betyg.slumpkod ' \
                 'INNER JOIN diagnoser ON diagnoser.slumpkod = franvaro.slumpkod ' \
-                f'WHERE betyg.kurs = "{kurs}" ' \
+                f'WHERE betyg.kurs LIKE "{kurs}%%" ' \
                 'GROUP BY(betyg.slumpkod)'
     df_betyg_franvaro_diagnoser = pd.read_sql_query(sql_query, con = con)
 
@@ -185,7 +185,9 @@ def random_forrest_SMOTE(X_train, X_test, y_train, y_test):
     print("------------------------RF with SMOTE --------------------------")
     # Om felkod, testa att byta k_neighbors, m_neighbours
     # Kolla different smote parametrar
-    bsmote = BorderlineSMOTE(random_state = 42, kind = 'borderline-2', k_neighbors = 2, m_neighbors = 7)
+
+    # Se till att denna är samma för både SMOTE och SMOTE + HYPER
+    bsmote = BorderlineSMOTE(random_state = 42, kind = 'borderline-2', k_neighbors = 5)
     #X_res_sm, y_res_sm = sm.fit_resample(X_train, y_train)    # Apply it on the train data
     #X_res_1, y_res_1 = bsmote1.fit_resample(X_train, y_train)
     X_res, y_res = bsmote.fit_resample(X_train, y_train)
@@ -219,7 +221,7 @@ def random_forrest_SMOTE(X_train, X_test, y_train, y_test):
 def random_forrest_SMOTE_HYPER(X_train, X_test, y_train, y_test):
     print("------------------------RF with SMOTE and HYPER--------------------------")
 
-    bsmote = BorderlineSMOTE(random_state = 42, kind = 'borderline-2', k_neighbors = 2, m_neighbors = 7)
+    bsmote = BorderlineSMOTE(random_state = 42, kind = 'borderline-2', k_neighbors = 5)
     #X_res_sm, y_res_sm = sm.fit_resample(X_train, y_train)    # Apply it on the train data
     #X_res_1, y_res_1 = bsmote1.fit_resample(X_train, y_train)
     X_res, y_res = bsmote.fit_resample(X_train, y_train)
@@ -235,10 +237,10 @@ def random_forrest_SMOTE_HYPER(X_train, X_test, y_train, y_test):
     # create classfier algorthm, NOW with hypertuned parameters.
     # NOTE hypertuning parameters might differ for E-F and P-F and what class is given.
 
-    # Best Parameters : {'max_depth': None, 'max_features': 'sqrt', 'min_samples_leaf': 1, 'min_samples_split': 2, 'n_estimators': 10}
+    # Best Parameters :  {'max_depth': None, 'max_features': None, 'min_samples_leaf': 2, 'min_samples_split': 10, 'n_estimators': 20}
     # Ska vi lägga in Max depth och max_features ändå???
-    classifier_rf = RandomForestClassifier(random_state = 42, n_jobs=-1, max_depth = None, max_features = 'sqrt', min_samples_leaf = 1,
-                                           min_samples_split = 2, n_estimators = 10, oob_score=True)
+    classifier_rf = RandomForestClassifier(random_state = 42, n_jobs=-1, max_depth = None, max_features = None, min_samples_leaf = 2,
+                                           min_samples_split = 10, n_estimators = 20, oob_score=True)
     classifier_rf.fit(X_res, y_res)         # train the RF algortihm
 
     print(f'OOB score: {classifier_rf.oob_score_}')                     # OOB score
@@ -290,8 +292,10 @@ def confusion_matrix(classifier_rf, X_test, y_test, labels):
 def features(classifier, variables_list, X_test, y_test):
     # Måste också skriva in listan i vilken ordning attributen förekommer
     feature_imp = pd.Series(classifier.feature_importances_, index = variables_list)
-    perm_importance = permutation_importance(classifier, X_test, y_test)
-    print(feature_imp)
+    feature_imp_sorted = feature_imp.sort_values(ascending=False)
+    #feature_imp_sorted.plot.bar(x = 'Feature', y = 'Procent', color = 'red', title = "Feature importance in percentage for course... ")
+    #plt.show()
+    print(feature_imp_sorted)
 
 # input: the orginal df, before manipulated. RF classifier object!
 # Output: Confusion Matrix + classfication_report illustrating how many students got classified as F instead.
@@ -352,13 +356,13 @@ pd.set_option('display.max_columns', None)
 db_con = connection_to_db() # Create connection to database, Använd denna i alla SQL_queries!
 
 # ------------------- Canvas data! ----------------------------------------------------------------------
-df_canvas_1 = read_sql_betyg("TEKTEK01" ,'02-15' ,db_con)        # read canvas table from SQL
+df_canvas_1 = read_sql_betyg("KEMKEM01" ,'02-15' ,db_con)        # read canvas table from SQL
 #Byt variabler HÄR, DATUM och KURS
 df_canvas = pageviews_participation_factor(df_canvas_1)                         # Update Canvas table, add factorised columns
 
 # --------------------------- Read other tables -------------------------------------------------
 # Lägg till vilka variabler du vill select här!
-df_betyg_franvaro_diagnoser = read_sql("TEKTEK01", db_con)
+df_betyg_franvaro_diagnoser = read_sql("KEMKEM01", db_con)
 
 # --------------------------------- merge tables ----------------------------------------------------------- 
 # List of variables, not to drop!
@@ -368,6 +372,8 @@ df_betyg_franvaro_diagnoser = read_sql("TEKTEK01", db_con)
 # 'Svenska ordkedjor Stanine', 'Svenska bokstavskedjor Stanine', 'Svenska meningskedjor Stanine','Engelska totalt'
 # Utan CANVAS: 'betyg', 'Frånvarotid', 'Matematik',
 # 'Svenska ordkedjor Stanine', 'Svenska bokstavskedjor Stanine', 'Svenska meningskedjor Stanine','Engelska totalt'
+
+# För engelska ha med 'on_time_factor'
 
 variables_tokeep_list = ['betyg', 'Frånvarotid', 'Matematik', 'page_view_factor', 'participation_factor', 'on_time_factor',
                          'Svenska ordkedjor Stanine', 'Svenska bokstavskedjor Stanine', 'Svenska meningskedjor Stanine','Engelska totalt']
@@ -380,6 +386,7 @@ df_merged = merge_function(df_betyg_franvaro_diagnoser, df_canvas, variables_tok
 
 # ----------------------------- Clean and Transform data -----------------------------------------------------
 df_cleaned = remove_percentage(df_merged)       # Clean % for engelska total )
+
 # ------------ With Only E and F ----------------
 grades_list = ["A", "B", "C", "D", "-"]
 df_improved = remove_grades(df_cleaned, grades_list)      # Remove grades above!
@@ -392,7 +399,7 @@ X, y, targets = encode_target(df_improved, "betyg")               # E-F: Create 
 
 # ------------------ Train - Test split data --------------------------------------------------------------
 # randomstate i ordning: 42, 1, 2
-X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.8, random_state=2)         # Train and test data
+X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.8, random_state=1)         # Train and test data
 # X_train_2, X_test_2, y_train_2, y_test_2 = train_test_split(X_2, y_2, train_size=0.8, random_state=42)
 
 # ----------------------------------- RF algorithm --------------------------------------------------------
@@ -406,14 +413,12 @@ features(just_rf_classifier, list(X_train), X_test, y_test)                     
 # Det finns olika SMOTE algortimer, man skulle även här kunna genomföra hypertuning av parameters och på så sätt finna, vilken som är bäst!
 # For now, Borderline 2 is the best!
 
-# we remove the worst values and therefore the features has to eb dropped
+# we remove the worst values and therefore the features has to be dropped
 # Do this by hand!
-X_train_dropped = X_train.drop(columns = ['Svenska ordkedjor Stanine', 'Svenska meningskedjor Stanine', 'Engelska totalt',
-                                          'page_view_factor', 'on_time_factor'])
-X_test_dropped = X_test.drop(columns = ['Svenska ordkedjor Stanine', 'Svenska meningskedjor Stanine', 'Engelska totalt',
-                                          'page_view_factor', 'on_time_factor'])
-remove_targets = np.array(['Svenska ordkedjor Stanine', 'Svenska meningskedjor Stanine', 'Engelska totalt',
-                                          'page_view_factor', 'on_time_factor'])
+# ['Svenska bokstavskedjor Stanine', 'Svenska ordkedjor Stanine', 'Engelska totalt', 'on_time_factor','Matematik']
+X_train_dropped = X_train.drop(columns = ['Svenska meningskedjor Stanine', 'Svenska ordkedjor Stanine'])
+X_test_dropped = X_test.drop(columns = ['Svenska meningskedjor Stanine', 'Svenska ordkedjor Stanine'])
+remove_targets = np.array(['Svenska meningskedjor Stanine', 'Svenska ordkedjor Stanine'])
 new_targets = np.setdiff1d(targets, remove_targets)
 
 # --------------- RF again, not with less variables -----------------------
@@ -446,7 +451,7 @@ features(rf_classifier_hyper_smote, list(X_train_dropped), X_test_dropped, y_tes
 # ------------ CONFUSION MATRIX --------------------------
 
 #confusion_matrix(rf_classifier_2, X_test_2, y_test_2, targets_2)
-# onfusion_matrix(rf_classifier_hyper_smote, X_test_dropped, y_test, new_targets)
+# confusion_matrix(rf_classifier_hyper_smote, X_test_dropped, y_test, new_targets)
 # Some testing
 #higher_grades_test(df_merged, rf_classifier_1)
 
