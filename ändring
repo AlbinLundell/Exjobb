@@ -1,6 +1,0 @@
-df_DT_clean_3['Engelska Vocabulary'] = df_DT_clean_3['Engelska Vocabulary'].str.replace('%','')
-df_DT_clean_3['Engelska Reading'] = df_DT_clean_3['Engelska Reading'].str.replace('%','')
-
-df_DT_clean_3['betyg'] = df_DT_clean_3['betyg'].str.replace('E', 'F')
-for i in ["A", "B", "C", "D"]:
-    df_DT_clean_3['betyg'] = df_DT_clean_3['betyg'].str.replace(i, 'P')
